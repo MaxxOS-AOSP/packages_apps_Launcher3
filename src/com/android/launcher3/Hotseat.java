@@ -191,6 +191,11 @@ public class Hotseat extends CellLayout implements Insettable {
             }
         }
 
+        boolean iosDock = LauncherPrefs.getPrefs(getContext()).getBoolean(
+                Utilities.KEY_IOS27_DOCK, false);
+        getShortcutsAndWidgets().setBackgroundResource(
+                iosDock ? R.drawable.maxx_ios27_dock_background : android.R.color.transparent);
+
         resetCellSize(dp);
         if (hasVerticalHotseat) {
             setGridSize(1, dp.getHotseatProfile().getNumShownIcons());

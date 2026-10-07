@@ -412,6 +412,8 @@ public class Launcher extends StatefulActivity<LauncherState>
                     switch (key) {
                         case Utilities.KEY_DOCK_SEARCH:
                         case Utilities.KEY_DOCK_SEARCH_PROVIDER:
+                        case Utilities.KEY_IOS27_DOCK:
+                        case Utilities.KEY_IOS27_SEARCH:
                         case Utilities.KEY_BLUR_DEPTH:
                             mNeedsRestart = true;
                             break;

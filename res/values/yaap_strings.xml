@@ -138,4 +138,8 @@
     <string name="tapered_rect_shape_title">Tapered rect</string>
     <string name="teardrop_shape_title">Teardrop</string>
     <string name="rounded_rect_shape_title">Rounded rect</string>
+    <string name="pref_ios27_dock_title">iOS 27 style floating dock</string>
+    <string name="pref_ios27_dock_summary">Use a floating rounded dock behind the home screen icons.</string>
+    <string name="pref_ios27_search_title">iOS 27 style search bar</string>
+    <string name="pref_ios27_search_summary">Use a floating search bar above the dock with the Google G logo.</string>
 </resources>

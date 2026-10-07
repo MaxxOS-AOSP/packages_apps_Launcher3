@@ -154,6 +154,8 @@ public final class Utilities {
 
     public static final String KEY_DOCK_SEARCH = "pref_dock_search";
     public static final String KEY_DOCK_SEARCH_PROVIDER = "pref_dock_search_provider";
+    public static final String KEY_IOS27_DOCK = "pref_ios27_dock";
+    public static final String KEY_IOS27_SEARCH = "pref_ios27_search";
     public static final String KEY_APP_DRAWER_OPACITY = "pref_app_drawer_opacity";
     public static final String KEY_FORCE_MONOCHROME_ICONS = "pref_forced_monochrome_icons";
     public static final String KEY_AUTO_KEYABORD = "pref_auto_keyboard";

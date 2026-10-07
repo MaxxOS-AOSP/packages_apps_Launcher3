@@ -1,0 +1,63 @@
+# Copyright (C) 2026 MaxxOS. All rights reserved.
+#
+# Builds a test APK of MaxxOS Launcher3 using Gradle.
+# Can be run manually from Actions or automatically on push to staging.
+
+name: Build MaxxOS Launcher3 APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ staging ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ""
+
+      - name: Install SDK platform 37
+        run: |
+          yes | sdkmanager --licenses > /dev/null || true
+
+          echo "Available platform 36/37 packages:"
+          sdkmanager --list 2>/dev/null | grep -iE "platforms;android-3[67]" || true
+
+          for ch in 0 3; do
+            for p in "platforms;android-37.0" "platforms;android-37"; do
+              if sdkmanager --channel=$ch "$p"; then
+                echo "Installed $p (channel $ch)"
+                exit 0
+              fi
+            done
+          done
+
+          echo "Manual install failed; Gradle will try to auto-download the SDK."
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build debug APK
+        run: |
+          chmod +x ./gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: MaxxOS-Launcher3-debug-apk
+          path: build/outputs/apk/debug/*.apk
+          if-no-files-found: error
