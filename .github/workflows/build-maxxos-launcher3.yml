@@ -1,17 +1,24 @@
 # Copyright (C) 2026 MaxxOS. All rights reserved.
 #
-# Builds a test APK of MaxxOS Launcher3 using Gradle.
-# Can be run manually from Actions or automatically on push to staging.
+# Launcher3 is an Android Soong module, not a standalone Gradle project.
+# The actual APK must be built from the complete MaxxOS/AOSP tree with:
+#   m Launcher3
+# or:
+#   m Launcher3QuickStep
 
-name: Build MaxxOS Launcher3 APK
+name: Validate MaxxOS Launcher3
 
 on:
   workflow_dispatch:
   push:
     branches: [ staging ]
 
+permissions:
+  contents: read
+
 jobs:
-  build:
+  validate:
+    name: Validate Launcher3 source
     runs-on: ubuntu-latest
 
     steps:
@@ -22,42 +29,104 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: 21
+          java-version: '21'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: ""
-
-      - name: Install SDK platform 37
+      - name: Verify Launcher3 Soong files
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
+          set -euo pipefail
 
-          echo "Available platform 36/37 packages:"
-          sdkmanager --list 2>/dev/null | grep -iE "platforms;android-3[67]" || true
+          test -f Android.bp
+          test -f AndroidManifest-common.xml
+          test -f src/com/android/launcher3/Hotseat.java
+          test -f src/com/android/launcher3/Launcher.java
+          test -f src/com/android/launcher3/Utilities.java
+          test -f src/com/android/launcher3/qsb/MaxxQsbView.java
+          test -f res/drawable/maxx_ios27_dock_background.xml
+          test -f MAXXOS_IOS27_DOCK.md
 
-          for ch in 0 3; do
-            for p in "platforms;android-37.0" "platforms;android-37"; do
-              if sdkmanager --channel=$ch "$p"; then
-                echo "Installed $p (channel $ch)"
-                exit 0
-              fi
-            done
-          done
+          echo "Launcher3 source files are present."
 
-          echo "Manual install failed; Gradle will try to auto-download the SDK."
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v4
-
-      - name: Build debug APK
+      - name: Validate XML resources
         run: |
-          chmod +x ./gradlew
-          ./gradlew assembleDebug --stacktrace
+          set -euo pipefail
 
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: MaxxOS-Launcher3-debug-apk
-          path: build/outputs/apk/debug/*.apk
-          if-no-files-found: error
+          python3 - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+
+          roots = [
+              pathlib.Path("res"),
+              pathlib.Path("quickstep/res"),
+              pathlib.Path("go/quickstep/res"),
+          ]
+
+          files = []
+          for root in roots:
+              if root.exists():
+                  files.extend(root.rglob("*.xml"))
+
+          errors = []
+
+          for path in files:
+              try:
+                  ET.parse(path)
+              except ET.ParseError as exc:
+                  errors.append(f"{path}: {exc}")
+
+          if errors:
+              print("\n".join(errors))
+              raise SystemExit(1)
+
+          print(f"Validated {len(files)} XML resource files.")
+          PY
+
+      - name: Validate MaxxOS Java files
+        run: |
+          set -euo pipefail
+
+          python3 - <<'PY'
+          from pathlib import Path
+
+          files = [
+              Path("src/com/android/launcher3/Hotseat.java"),
+              Path("src/com/android/launcher3/Launcher.java"),
+              Path("src/com/android/launcher3/Utilities.java"),
+              Path("src/com/android/launcher3/qsb/MaxxQsbView.java"),
+          ]
+
+          for path in files:
+              text = path.read_text(encoding="utf-8")
+
+              if not text.strip():
+                  raise SystemExit(f"{path}: file is empty")
+
+              if text.count("{") != text.count("}"):
+                  raise SystemExit(f"{path}: unmatched braces")
+
+              if "package " not in text:
+                  raise SystemExit(f"{path}: package declaration missing")
+
+              print(f"OK: {path}")
+          PY
+
+      - name: Check for accidental build artifacts
+        run: |
+          set -euo pipefail
+
+          if find . -path './.git' -prune -o \
+              \( -name '*.apk' -o -name '*.aab' -o -name '*.class' \) \
+              -print | grep -q .; then
+            echo "Unexpected generated build artifacts found."
+            exit 1
+          fi
+
+          echo "No generated APK/AAB/class artifacts committed."
+
+      - name: Show Launcher3 build targets
+        run: |
+          grep -nE \
+            'name: "(Launcher3|Launcher3QuickStep|Launcher3Go|Launcher3QuickStepGo)"' \
+            Android.bp || true
+
+          echo
+          echo "This repository uses Android Soong, not Gradle."
